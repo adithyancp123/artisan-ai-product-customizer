@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Artisan AI - AI Product Customization{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section text-center py-5 animate-fade-in">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="badge bg-primary-gradient mb-3 p-2 px-3 rounded-pill">V1.0 LIVE</div>
+                <h1 class="display-3 fw-bold mb-4">Artisan AI: <span class="text-primary-gradient">The Future of Wearables</span></h1>
+                <p class="lead text-secondary mb-5 mx-auto" style="max-width: 700px;">
+                    Upload your logo or design and preview hyper-realistic apparel mockups instantly. Powered by OpenCV-driven fabric warping and async rendering.
+                </p>
+                <div class="d-flex justify-content-center gap-3 mb-5">
+                    <a href="{% url 'home' %}" class="btn btn-primary-gradient btn-lg px-5 py-3">
+                        <i class="fa-solid fa-wand-magic-sparkles me-2"></i> Start Designing
+                    </a>
+                    <a href="#features" class="btn btn-outline-light btn-lg px-5 py-3">
+                        Learn More
+                    </a>
+                </div>
+
+                <!-- Product Preview Carousel / Image -->
+                <div class="glass-card p-2 mt-5 mx-auto shadow-lg" style="max-width: 900px; transform: perspective(1000px) rotateX(5deg);">
+                    <img src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=1200" alt="Apparel Preview" class="img-fluid rounded shadow">
+                    <div class="glass-tag top-right">AI-Powered Rendering</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section id="features" class="py-5 bg-dark bg-opacity-25">
+    <div class="container py-5">
+        <div class="text-center mb-5">
+            <h2 class="display-5 fw-bold">Engineered for <span class="text-primary-gradient">Realism</span></h2>
+            <p class="text-secondary">Precision image processing meets modern web technology.</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="glass-card h-100 p-4 text-center">
+                    <div class="feature-icon mb-3">
+                        <i class="fa-solid fa-microchip fs-1 text-primary"></i>
+                    </div>
+                    <h4>Fabric Warping</h4>
+                    <p class="text-secondary">Using OpenCV displacement mapping, your design follows the natural folds and texture of the fabric.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="glass-card h-100 p-4 text-center">
+                    <div class="feature-icon mb-3">
+                        <i class="fa-solid fa-bolt fs-1 text-primary"></i>
+                    </div>
+                    <h4>Async Pipeline</h4>
+                    <p class="text-secondary">Celery and Redis handle heavy image processing in the background, keeping the UI responsive.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="glass-card h-100 p-4 text-center">
+                    <div class="feature-icon mb-3">
+                        <i class="fa-solid fa-layer-group fs-1 text-primary"></i>
+                    </div>
+                    <h4>Multi-Angle Views</h4>
+                    <p class="text-secondary">Visualize your creation from every angle: Front, Side, and Back, with automated perspective transforms.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Tech Stack -->
+<section class="py-5">
+    <div class="container text-center">
+        <h5 class="text-secondary mb-4 small fw-bold text-uppercase tracking-widest">Built With Best-in-Class Tech</h5>
+        <div class="d-flex flex-wrap justify-content-center gap-5 opacity-50 grayscale hover-normal transition-all">
+            <i class="fa-brands fa-python fs-1" title="Python"></i>
+            <i class="fa-solid fa-gears fs-1" title="Django"></i>
+            <i class="fa-solid fa-database fs-1" title="Redis"></i>
+            <i class="fa-solid fa-microchip fs-1" title="OpenCV"></i>
+            <i class="fa-brands fa-js fs-1" title="JavaScript"></i>
+            <i class="fa-brands fa-bootstrap fs-1" title="Bootstrap 5"></i>
+        </div>
+    </div>
+</section>
+
+<style>
+    .tracking-widest { letter-spacing: 0.2rem; }
+    .grayscale { filter: grayscale(1); }
+    .hover-normal:hover { filter: grayscale(0); opacity: 1 !important; cursor: default; }
+    .glass-tag {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        background: rgba(0, 163, 255, 0.2);
+        backdrop-filter: blur(10px);
+        padding: 5px 15px;
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 0.8rem;
+        color: white;
+    }
+</style>
+{% endblock %}

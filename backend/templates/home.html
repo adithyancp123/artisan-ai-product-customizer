@@ -1,0 +1,382 @@
+{% extends "base.html" %}
+
+{% block title %}Design Lab - Artisan AI{% endblock %}
+
+{% block content %}
+<div class="row g-4 animate-fade-in">
+    <!-- Sidebar: Configuration -->
+    <div class="col-lg-4">
+        <div class="glass-card mb-4 mt-4">
+            <h4 class="mb-4 fw-bold"><i class="fa-solid fa-sliders me-2 text-primary"></i> Configure</h4>
+            
+            <div class="mb-4">
+                <label class="form-label small text-secondary fw-bold">1. SELECT PRODUCT</label>
+                <div id="product-list" class="row g-2">
+                    <!-- Products loaded via JS -->
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label small text-secondary fw-bold">2. SELECT ANGLE</label>
+                <div id="view-list" class="d-flex gap-2 flex-wrap">
+                    <p class="text-muted small">Select a product first...</p>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label small text-secondary fw-bold">3. UPLOAD ARTWORK</label>
+                <div id="drop-zone" class="upload-zone">
+                    <i class="fa-solid fa-cloud-arrow-up fs-2 mb-2 text-primary"></i>
+                    <p class="mb-0 small">Drag & drop or <span class="text-primary">browse</span></p>
+                    <input type="file" id="design-upload" hidden accept="image/*">
+                </div>
+                <div id="upload-preview" class="mt-3 d-none text-center">
+                    <img src="" class="img-thumbnail bg-dark border-secondary" style="height: 100px;">
+                    <br><span class="small text-secondary" id="filename-display"></span>
+                </div>
+            </div>
+
+            <button id="render-btn" class="btn btn-primary-gradient w-100 py-3 mt-2" disabled>
+                <span id="btn-text">Generate Real Mockup</span>
+                <div id="btn-spinner" class="spinner-border spinner-border-sm d-none" role="status"></div>
+            </button>
+        </div>
+
+        <!-- Render History -->
+        <div class="glass-card">
+            <h5 class="mb-3 fw-bold small text-secondary">RECENT WORK</h5>
+            <div id="render-history" class="d-flex flex-column gap-2">
+                <p class="text-muted small mb-0">No recent renders yet.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Workspace: Real-time Rendering -->
+    <div class="col-lg-8">
+        <div class="glass-card h-100 d-flex flex-column align-items-center justify-content-center p-0 overflow-hidden position-relative mt-4" style="min-height: 600px;">
+            <div id="empty-state" class="text-center p-5">
+                <i class="fa-solid fa-wand-magic-sparkles display-1 text-secondary opacity-25 mb-4"></i>
+                <h2 class="text-secondary">Ready to Visualize?</h2>
+                <p class="text-muted">Configure your product on the left to begin.</p>
+            </div>
+
+            <div id="processing-state" class="d-none text-center p-5 w-100">
+                <h3 class="mb-4">Crafting Your Mockup...</h3>
+                <div class="progress mb-3 mx-auto" style="max-width: 400px;">
+                    <div id="render-progress" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                </div>
+                <p class="text-secondary small" id="status-text">OpenCV Engine initializing...</p>
+            </div>
+
+            <div id="result-state" class="d-none w-100 h-100 animate-fade-in position-relative">
+                <div class="position-absolute top-0 end-0 p-3" style="z-index: 10">
+                    <a id="download-link" href="#" download="mockup.png" class="btn btn-sm btn-dark bg-opacity-75 border-secondary text-white">
+                        <i class="fa-solid fa-download me-1"></i> Download Result
+                    </a>
+                    <button class="btn btn-sm btn-outline-light ms-2" onclick="resetUI()">
+                        <i class="fa-solid fa-rotate-left"></i> Start New
+                    </button>
+                </div>
+                <img id="final-mockup" src="" class="img-fluid w-100 h-100 object-fit-contain">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick View Modal -->
+<div class="modal fade" id="quickViewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card border-0">
+            <div class="modal-header border-0">
+                <h5 class="modal-title" id="qv-title">Product Quick View</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div id="qv-angles" class="d-flex justify-content-center gap-3">
+                    <!-- Progress Loader -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let selectedProductId = null;
+    let selectedViewId = null;
+    let designFile = null;
+
+    // Load Products
+    fetch('/api/products/')
+        .then(res => res.json())
+        .then(data => {
+            const container = document.getElementById('product-list');
+            data.forEach(p => {
+                const div = document.createElement('div');
+                div.className = 'col-6';
+                div.innerHTML = `
+                    <div class="product-card-wrapper position-relative">
+                        <div class="glass-card p-3 text-center small product-item cursor-pointer h-100 transition-all hover-zoom" onclick="selectProduct(${p.id}, this)">
+                            <div class="mb-2">
+                                <i class="fa-solid fa-shirt fs-2 text-secondary opacity-50"></i>
+                            </div>
+                            <div class="fw-bold">${p.name}</div>
+                        </div>
+                        <button class="quick-view-btn" onclick="openQuickView(${p.id}, '${p.name}', event)">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        });
+
+    window.openQuickView = async function(id, name, event) {
+        event.stopPropagation();
+        const modal = new bootstrap.Modal(document.getElementById('quickViewModal'));
+        document.getElementById('qv-title').innerText = name;
+        const container = document.getElementById('qv-angles');
+        container.innerHTML = '<div class="spinner-border text-primary"></div>';
+        modal.show();
+
+        try {
+            const res = await fetch(`/api/products/${id}/views/`);
+            const views = await res.json();
+            container.innerHTML = '';
+            views.forEach(v => {
+                const div = document.createElement('div');
+                div.className = 'text-center';
+                div.innerHTML = `
+                    <img src="${v.base_image}" class="img-thumbnail bg-dark border-secondary mb-1" style="height: 120px; width: 120px; object-fit: cover;">
+                    <div class="small text-capitalize">${v.angle_type}</div>
+                `;
+                container.appendChild(div);
+            });
+        } catch (err) {
+            container.innerText = 'Failed to load views.';
+        }
+    };
+
+    window.selectProduct = function(id, el) {
+        document.querySelectorAll('.product-item').forEach(e => {
+            e.classList.remove('active-card');
+        });
+        el.classList.add('active-card');
+        selectedProductId = id;
+        loadViews(id);
+        checkReady();
+    };
+
+    function loadViews(productId) {
+        const container = document.getElementById('view-list');
+        container.innerHTML = '<div class="spinner-border spinner-border-sm text-primary"></div>';
+        
+        fetch(`/api/products/${productId}/views/`)
+            .then(res => res.json())
+            .then(data => {
+                container.innerHTML = '';
+                data.forEach(v => {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn btn-sm btn-outline-secondary text-capitalize';
+                    btn.innerText = v.angle_type;
+                    btn.onclick = () => {
+                        document.querySelectorAll('#view-list button').forEach(b => {
+                            b.classList.remove('btn-primary-gradient');
+                            b.classList.add('btn-outline-secondary');
+                        });
+                        btn.classList.remove('btn-outline-secondary');
+                        btn.classList.add('btn-primary-gradient');
+                        selectedViewId = v.id;
+                        checkReady();
+                    };
+                    container.appendChild(btn);
+                });
+            });
+    }
+
+    // Drag and Drop
+    const dropZone = document.getElementById('drop-zone');
+    dropZone.onclick = () => document.getElementById('design-upload').click();
+    dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('dragover'); };
+    dropZone.ondragleave = () => dropZone.classList.remove('dragover');
+    dropZone.ondrop = (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        handleFile(e.dataTransfer.files[0]);
+    };
+
+    document.getElementById('design-upload').onchange = (e) => handleFile(e.target.files[0]);
+
+    function handleFile(file) {
+        if (!file || !file.type.startsWith('image/')) return;
+        designFile = file;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            document.getElementById('upload-preview').classList.remove('d-none');
+            document.querySelector('#upload-preview img').src = e.target.result;
+            document.getElementById('filename-display').innerText = file.name;
+        };
+        reader.readAsDataURL(file);
+        checkReady();
+    }
+
+    function checkReady() {
+        document.getElementById('render-btn').disabled = !(selectedProductId && selectedViewId && designFile);
+    }
+
+    // Render Logic
+    document.getElementById('render-btn').onclick = function() {
+        const formData = new FormData();
+        formData.append('selected_view', selectedViewId);
+        formData.append('uploaded_design', designFile);
+        formData.append('selected_product', selectedProductId);
+
+        toggleUI('processing');
+        
+        fetch('/api/render-preview/', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+        })
+        .then(res => {
+            if (!res.ok) throw new Error('Upload failed');
+            return res.json();
+        })
+        .then(data => pollStatus(data.id))
+        .catch(err => {
+            alert(err.message);
+            toggleUI('empty');
+        });
+    };
+
+    function pollStatus(jobId) {
+        const interval = setInterval(() => {
+            fetch(`/api/job/${jobId}/status/`)
+                .then(res => res.json())
+                .then(data => {
+                    const progress = data.progress || 0;
+                    document.getElementById('render-progress').style.width = progress + '%';
+                    document.getElementById('status-text').innerText = data.status.toUpperCase() + '...';
+
+                    if (data.status === 'completed') {
+                        clearInterval(interval);
+                        showResult(data.output_image_url);
+                        addToHistory(data.output_image_url);
+                    } else if (data.status === 'failed') {
+                        clearInterval(interval);
+                        alert('Render failed: ' + data.error_message);
+                        toggleUI('empty');
+                    }
+                })
+                .catch(() => {
+                    clearInterval(interval);
+                    toggleUI('empty');
+                });
+        }, 1000);
+    }
+
+    function toggleUI(state) {
+        ['empty', 'processing', 'result'].forEach(s => {
+            const el = document.getElementById(`${s}-state`);
+            if (el) el.classList.add('d-none');
+        });
+        const target = document.getElementById(`${state}-state`);
+        if (target) target.classList.remove('d-none');
+        
+        const btn = document.getElementById('render-btn');
+        if (state === 'processing') {
+            btn.disabled = true;
+            document.getElementById('btn-spinner').classList.remove('d-none');
+            document.getElementById('btn-text').innerText = 'Processing...';
+        } else {
+            btn.disabled = (state === 'result');
+            document.getElementById('btn-spinner').classList.add('d-none');
+            document.getElementById('btn-text').innerText = 'Generate Real Mockup';
+        }
+    }
+
+    function resetUI() {
+        toggleUI('empty');
+        selectedViewId = null;
+        designFile = null;
+        document.getElementById('upload-preview').classList.add('d-none');
+        document.getElementById('design-upload').value = '';
+        document.querySelectorAll('#view-list button').forEach(b => {
+             b.classList.remove('btn-primary-gradient');
+             b.classList.add('btn-outline-secondary');
+        });
+        checkReady();
+    }
+
+    function showResult(url) {
+        const img = document.getElementById('final-mockup');
+        img.src = url;
+        document.getElementById('download-link').href = url;
+        toggleUI('result');
+    }
+
+    function addToHistory(url) {
+        const history = document.getElementById('render-history');
+        if (history.querySelector('p')) history.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = url;
+        img.className = 'img-thumbnail bg-dark border-secondary cursor-pointer hover-zoom';
+        img.style.height = '60px';
+        img.style.width = '60px';
+        img.style.objectFit = 'cover';
+        img.onclick = () => showResult(url);
+        history.prepend(img);
+    }
+</script>
+
+<style>
+    .cursor-pointer { cursor: pointer; }
+    .hover-zoom:hover { transform: scale(1.05); }
+    .transition-all { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .active-card { border: 2px solid var(--accent-blue) !important; background: rgba(0, 163, 255, 0.1) !important; }
+    
+    .product-card-wrapper {
+        position: relative;
+    }
+    
+    .quick-view-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s;
+        backdrop-filter: blur(5px);
+    }
+    
+    .product-card-wrapper:hover .quick-view-btn {
+        opacity: 1;
+    }
+
+    .upload-zone {
+        border: 2px dashed rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        padding: 30px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .upload-zone:hover, .upload-zone.dragover {
+        border-color: var(--accent-blue);
+        background: rgba(0, 163, 255, 0.05);
+    }
+
+    .object-fit-contain { object-fit: contain; }
+</style>
+{% endblock %}
